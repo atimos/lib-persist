@@ -1,0 +1,17 @@
+[package]
+name = "lib-persist-derive"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+heck = { version = "0.5.0", default-features = false }
+itertools = { version = "0.14.0", default-features = false, features = ["use_alloc"] }
+syn = { version = "2", features = ["full", "parsing"] }
+quote = { version = "1" }
+proc-macro2 = { version = "1" }
+
+[lints]
+workspace = true
