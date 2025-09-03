@@ -1,3 +1,16 @@
+[workspace]
+
+resolver = "2"
+
+members = ["./", "./derive"]
+
+[workspace.lints.clippy]
+large_futures = "allow"
+missing_errors_doc = "allow"
+all = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
 [package]
 name = "lib-persist"
 version = "0.1.0"
@@ -7,7 +20,7 @@ edition = "2024"
 base62 = { version = "2.2.2", default-features = false, features = ["alloc"] }
 futures = { version = "0.3.31", default-features = false }
 itertools = { version = "0.14.0", default-features = false, features = ["use_alloc"] }
-lib-persist-derive = { version = "0.1.0", path = "../persist_derive", default-features = false }
+lib-persist-derive = { version = "0.1.0", path = "./derive", default-features = false }
 scylla = { version = "1.3.1", default-features = false, features = ["time-03", "bigdecimal-04", "secrecy-08"] }
 serde = { version = "1.0.219", default-features = false }
 thiserror = { version = "2.0.16", default-features = false }
