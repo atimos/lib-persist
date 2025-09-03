@@ -16,8 +16,14 @@ pub fn create_struct_implementation(ident: &Ident, data: &DataStruct) -> TokenSt
 
     let fields = match &data.fields {
         Fields::Unit => None,
-        Fields::Unnamed(data) => Some(generate_try_from_fields(&data.unnamed.iter().collect::<Vec<_>>(), None)),
-        Fields::Named(data) => Some(generate_try_from_fields(&data.named.iter().collect::<Vec<_>>(), None)),
+        Fields::Unnamed(data) => Some(generate_try_from_fields(
+            &data.unnamed.iter().collect::<Vec<_>>(),
+            None,
+        )),
+        Fields::Named(data) => Some(generate_try_from_fields(
+            &data.named.iter().collect::<Vec<_>>(),
+            None,
+        )),
     }
     .unwrap_or_default();
 
@@ -35,7 +41,11 @@ pub fn create_struct_implementation(ident: &Ident, data: &DataStruct) -> TokenSt
 }
 
 pub fn create_enum_implementation(ident: &Ident, data: &DataEnum) -> TokenStream {
-    if data.variants.iter().all(|v| matches!(v.fields, Fields::Unit)) {
+    if data
+        .variants
+        .iter()
+        .all(|v| matches!(v.fields, Fields::Unit))
+    {
         return quote! {};
     }
 
@@ -47,12 +57,18 @@ pub fn create_enum_implementation(ident: &Ident, data: &DataEnum) -> TokenStream
         match &v.fields {
             Fields::Unit => quote! { #variant_str => Self::#variant },
             Fields::Unnamed(data) => {
-                let values = generate_try_from_fields(&data.unnamed.iter().collect::<Vec<_>>(), Some(&v.ident));
+                let values = generate_try_from_fields(
+                    &data.unnamed.iter().collect::<Vec<_>>(),
+                    Some(&v.ident),
+                );
 
                 quote! { #variant_str => Self::#variant(#(#values),*) }
             }
             Fields::Named(data) => {
-                let values = generate_try_from_fields(&data.named.iter().collect::<Vec<_>>(), Some(&v.ident));
+                let values = generate_try_from_fields(
+                    &data.named.iter().collect::<Vec<_>>(),
+                    Some(&v.ident),
+                );
 
                 quote! { #variant_str => Self::#variant{#(#values),*} }
             }

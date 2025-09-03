@@ -16,7 +16,11 @@ pub fn derive_map_to_type(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
 fn is_option(ty: &Type) -> bool {
     match ty {
-        Type::Path(path) => path.path.segments.first().is_some_and(|s| s.ident == "Option"),
+        Type::Path(path) => path
+            .path
+            .segments
+            .first()
+            .is_some_and(|s| s.ident == "Option"),
         _ => false,
     }
 }

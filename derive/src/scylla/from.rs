@@ -16,8 +16,14 @@ pub fn create_struct_implementation(ident: &Ident, data: &DataStruct) -> TokenSt
 
     let (fields, field_names) = match &data.fields {
         Fields::Unit => None,
-        Fields::Unnamed(data) => Some(generate_from_fields(&data.unnamed.iter().collect::<Vec<_>>(), None)),
-        Fields::Named(data) => Some(generate_from_fields(&data.named.iter().collect::<Vec<_>>(), None)),
+        Fields::Unnamed(data) => Some(generate_from_fields(
+            &data.unnamed.iter().collect::<Vec<_>>(),
+            None,
+        )),
+        Fields::Named(data) => Some(generate_from_fields(
+            &data.named.iter().collect::<Vec<_>>(),
+            None,
+        )),
     }
     .unwrap_or_default();
 
@@ -34,7 +40,11 @@ pub fn create_struct_implementation(ident: &Ident, data: &DataStruct) -> TokenSt
 }
 
 pub fn create_enum_implementation(ident: &Ident, data: &DataEnum) -> TokenStream {
-    if data.variants.iter().all(|v| matches!(v.fields, Fields::Unit)) {
+    if data
+        .variants
+        .iter()
+        .all(|v| matches!(v.fields, Fields::Unit))
+    {
         return quote! {};
     }
 
@@ -88,7 +98,10 @@ pub fn create_enum_implementation(ident: &Ident, data: &DataEnum) -> TokenStream
     }
 }
 
-fn generate_from_fields(fields: &[&Field], variant_name: Option<&Ident>) -> (Vec<TokenStream>, Vec<TokenStream>) {
+fn generate_from_fields(
+    fields: &[&Field],
+    variant_name: Option<&Ident>,
+) -> (Vec<TokenStream>, Vec<TokenStream>) {
     map_fields(fields, variant_name)
         .map(|(field, mapper_field, ty)| {
             let field = field.unwrap_or_else(|| mapper_field.clone());

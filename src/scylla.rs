@@ -98,8 +98,11 @@ impl Instance {
         app_instance: Uuid,
         app_name: String,
         app_version: String,
-        nodes: &[impl AsRef<str> + std::fmt::Debug],
-        credentials: Option<(impl Into<String>, impl Into<String>)>,
+        nodes: &[impl AsRef<str> + std::fmt::Debug + Send + Sync],
+        credentials: Option<(
+            impl Into<String> + Send + Sync,
+            impl Into<String> + Send + Sync,
+        )>,
     ) -> Result<Self, LoadError> {
         let mut builder = SessionBuilder::new()
             .known_nodes(nodes)
@@ -113,7 +116,10 @@ impl Instance {
         let session = builder.build().await?;
 
         Ok(Self {
-            inner: CachingSessionBuilder::new(session).use_cached_result_metadata(true).build().into(),
+            inner: CachingSessionBuilder::new(session)
+                .use_cached_result_metadata(true)
+                .build()
+                .into(),
             app_name: app_name.into(),
             app_instance,
             app_version: app_version.into(),
@@ -121,7 +127,11 @@ impl Instance {
     }
 
     pub async fn set_keyspace(&self) -> Result<(), LoadError> {
-        Ok(self.inner.get_session().use_keyspace(data_keyspace(self.app_instance, &self.app_name), true).await?)
+        Ok(self
+            .inner
+            .get_session()
+            .use_keyspace(data_keyspace(self.app_instance, &self.app_name), true)
+            .await?)
     }
 
     pub async fn migrate(&self, file: &str, cql: &str) -> Result<(), MigrationError> {
@@ -153,12 +163,16 @@ impl Instance {
         )
         .then(async |(idx, statement)| {
             debug!(index = idx, statement = statement, "Executing statement");
-            self.inner.get_session().query_unpaged(statement, ()).await.map_err(|err| MigrationError::Migration {
-                file: (file).into(),
-                index: idx,
-                error: err,
-                statement: statement.to_string(),
-            })?;
+            self.inner
+                .get_session()
+                .query_unpaged(statement, ())
+                .await
+                .map_err(|err| MigrationError::Migration {
+                    file: (file).into(),
+                    index: idx,
+                    error: err,
+                    statement: statement.to_string(),
+                })?;
 
             self.inner
                 .get_session()
@@ -191,7 +205,10 @@ impl Instance {
             .execute_single_page(query.clone(), data, PagingState::start())
             .await
             .map_err(|err| {
-                error!(query = &query.contents, error = &err as &dyn std::error::Error);
+                error!(
+                    query = &query.contents,
+                    error = &err as &dyn std::error::Error
+                );
                 Error::Execution(err)
             })?
             .0)
@@ -204,15 +221,32 @@ impl Instance {
     ) -> Result<QueryPager, Error> {
         let query = query.into();
 
-        self.inner.execute_iter(query.clone(), data).await.map_err(|err| {
-            error!(query = &query.contents, error = &err as &dyn std::error::Error);
-            Error::PagerExecution(err)
-        })
+        self.inner
+            .execute_iter(query.clone(), data)
+            .await
+            .map_err(|err| {
+                error!(
+                    query = &query.contents,
+                    error = &err as &dyn std::error::Error
+                );
+                Error::PagerExecution(err)
+            })
     }
 
     #[instrument(skip(self), err)]
-    pub async fn setup(&self, replication_factor: usize, implementation: Option<&str>) -> Result<(), SetupError> {
-        create_structure(&self.inner, self.app_instance, &self.app_name, implementation, replication_factor).await?;
+    pub async fn setup(
+        &self,
+        replication_factor: usize,
+        implementation: Option<&str>,
+    ) -> Result<(), SetupError> {
+        create_structure(
+            &self.inner,
+            self.app_instance,
+            &self.app_name,
+            implementation,
+            replication_factor,
+        )
+        .await?;
 
         let meta_keyspace = meta_keyspace();
 
@@ -244,11 +278,16 @@ impl Instance {
     pub async fn drop_keyspace(&self) -> Result<(), SetupError> {
         self.inner
             .execute_unpaged(
-                format!(r#"drop keyspace if exists "{}""#, &data_keyspace(self.app_instance, &self.app_name)),
+                format!(
+                    r#"drop keyspace if exists "{}""#,
+                    &data_keyspace(self.app_instance, &self.app_name)
+                ),
                 (),
             )
             .await?;
-        self.inner.execute_unpaged(format!("drop keyspace if exists {}", meta_keyspace()), ()).await?;
+        self.inner
+            .execute_unpaged(format!("drop keyspace if exists {}", meta_keyspace()), ())
+            .await?;
         Ok(())
     }
 }
@@ -265,7 +304,8 @@ async fn create_structure(
     let data_keyspace = data_keyspace(instance, name);
 
     let mut tt = TinyTemplate::new();
-    tt.add_template("structure", include_str!("../structure.cql")).unwrap();
+    tt.add_template("structure", include_str!("../structure.cql"))
+        .unwrap();
 
     iter(
         tt.render(

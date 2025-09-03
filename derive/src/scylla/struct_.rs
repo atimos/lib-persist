@@ -6,6 +6,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DataEnum, DataStruct, Field, Fields, Ident};
 
+#[derive(Clone, Copy)]
 pub enum Kind {
     Row,
     Value,
@@ -19,13 +20,21 @@ pub fn create_struct(ident: &Ident, data: &DataStruct, kind: Kind) -> TokenStrea
 
     let fields = match &data.fields {
         Fields::Unit => None,
-        Fields::Unnamed(data) => Some(generate_fields(&data.unnamed.iter().collect::<Vec<_>>(), Some(ident))),
-        Fields::Named(data) => Some(generate_fields(&data.named.iter().collect::<Vec<_>>(), None)),
+        Fields::Unnamed(data) => Some(generate_fields(
+            &data.unnamed.iter().collect::<Vec<_>>(),
+            Some(ident),
+        )),
+        Fields::Named(data) => Some(generate_fields(
+            &data.named.iter().collect::<Vec<_>>(),
+            None,
+        )),
     }
     .unwrap_or_default();
 
     let derive = match kind {
-        Kind::Value => quote! {#[derive(Default, scylla::DeserializeValue, scylla::SerializeValue)]},
+        Kind::Value => {
+            quote! {#[derive(Default, scylla::DeserializeValue, scylla::SerializeValue)]}
+        }
         Kind::Row => quote! {#[derive(Default, scylla::DeserializeRow, scylla::SerializeRow)]},
     };
 
@@ -45,8 +54,14 @@ pub fn create_enum(ident: &Ident, data: &DataEnum, kind: Kind) -> TokenStream {
         .iter()
         .filter_map(|v| match &v.fields {
             Fields::Unit => None,
-            Fields::Unnamed(data) => Some(generate_fields(&data.unnamed.iter().collect::<Vec<_>>(), Some(&v.ident))),
-            Fields::Named(data) => Some(generate_fields(&data.named.iter().collect::<Vec<_>>(), Some(&v.ident))),
+            Fields::Unnamed(data) => Some(generate_fields(
+                &data.unnamed.iter().collect::<Vec<_>>(),
+                Some(&v.ident),
+            )),
+            Fields::Named(data) => Some(generate_fields(
+                &data.named.iter().collect::<Vec<_>>(),
+                Some(&v.ident),
+            )),
         })
         .flatten()
         .collect::<Vec<_>>();
@@ -56,7 +71,9 @@ pub fn create_enum(ident: &Ident, data: &DataEnum, kind: Kind) -> TokenStream {
     }
 
     let derive = match kind {
-        Kind::Value => quote! {#[derive(Default, scylla::DeserializeValue, scylla::SerializeValue)]},
+        Kind::Value => {
+            quote! {#[derive(Default, scylla::DeserializeValue, scylla::SerializeValue)]}
+        }
         Kind::Row => quote! {#[derive(Default, scylla::DeserializeRow, scylla::SerializeRow)]},
     };
 

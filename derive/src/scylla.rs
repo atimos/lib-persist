@@ -25,7 +25,10 @@ pub fn map_to_row(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             try_from::create_struct_implementation(&input.ident, data),
             scylla_row::create_struct_implementations(&input.ident, data),
         )),
-        _ => Err(Error::new(input.ident.span(), "Only enums and structs can derive `MapToScyllaRow`")),
+        Data::Union(_) => Err(Error::new(
+            input.ident.span(),
+            "Only enums and structs can derive `MapToScyllaRow`",
+        )),
     };
 
     match result {
@@ -51,7 +54,10 @@ pub fn map_to_type(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             try_from::create_struct_implementation(&input.ident, data),
             scylla_field::create_struct_implementations(&input.ident, data),
         )),
-        _ => Err(Error::new(input.ident.span(), "Only enums and structs can derive `MapToScyllaType`")),
+        Data::Union(_) => Err(Error::new(
+            input.ident.span(),
+            "Only enums and structs can derive `MapToScyllaType`",
+        )),
     };
 
     match result {
@@ -65,15 +71,19 @@ fn map_fields<'a>(
     fields: &'a [&Field],
     variant_name: Option<&'a Ident>,
 ) -> impl Iterator<Item = (Option<Ident>, Ident, Type)> + 'a {
-    let prefix =
-        if let Some(name) = &variant_name { format!("{}_", name.to_string().to_snek_case()) } else { String::new() };
+    let prefix = variant_name.map_or_else(String::new, |name| {
+        format!("{}_", name.to_string().to_snek_case())
+    });
 
     fields.iter().enumerate().map(move |(idx, field)| {
         (
             field.ident.clone(),
             format_ident!(
                 "{prefix}{}",
-                field.ident.as_ref().map_or_else(|| idx.to_string(), std::string::ToString::to_string)
+                field
+                    .ident
+                    .as_ref()
+                    .map_or_else(|| idx.to_string(), std::string::ToString::to_string)
             ),
             field.ty.clone(),
         )
